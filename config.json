@@ -1,0 +1,83 @@
+{
+	"id": "com.f5.spacewalker",
+	"version": "1.0.0.0",
+	"versionCode": 1000000,
+	"name": "SpaceWalker",
+	"description": "Using real footstep as game energy to discover different planets",
+	"whitelist": [
+		"http://*/*",
+		"https://*/*"
+	],
+	"author": "",
+	"email": "",
+	"website": "",
+	"orientation": "portrait",
+	"fullscreen": true,
+	"icons": [
+		{
+			"src": "www/icons/icon-512.png",
+			"width": 512,
+			"height": 512,
+			"density": "xxxhdpi"
+		},
+		{
+			"src": "www/icons/icon-256.png",
+			"width": 256,
+			"height": 256,
+			"density": null
+		},
+		{
+			"src": "www/icons/icon-128.png",
+			"width": 128,
+			"height": 128,
+			"density": "xhdpi"
+		},
+		{
+			"src": "www/icons/icon-64.png",
+			"width": 64,
+			"height": 64,
+			"density": "mdpi"
+		},
+		{
+			"src": "www/icons/icon-32.png",
+			"width": 32,
+			"height": 32,
+			"density": null
+		},
+		{
+			"src": "www/icons/icon-16.png",
+			"width": 16,
+			"height": 16,
+			"density": null
+		}
+	],
+	"plugins": [
+		{
+			"id": "cordova-plugin-inappbrowser",
+			"version": null
+		},
+		{
+			"id": "cordova-plugin-whitelist",
+			"version": null
+		},
+		{
+			"id": "cordova-plugin-file",
+			"version": null
+		},
+		{
+			"id": "cordova-plugin-statusbar",
+			"version": null
+		},
+		{
+			"id": "cordova-custom-config",
+			"version": null
+		}
+	],
+	"android": {
+		"min": 24,
+		"target": 26,
+		"plugins": []
+	},
+	"ios": null,
+	"useragent": null
+}
