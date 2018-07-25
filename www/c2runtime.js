@@ -35589,6 +35589,7 @@ cr.getObjectRefTable = function () {
 		cr.plugins_.Text.prototype.acts.SetText,
 		cr.plugins_.MM_Preloader.prototype.acts.AddFromLayoutByName,
 		cr.plugins_.MM_Preloader.prototype.acts.StartLazy,
+		cr.system_object.prototype.cnds.Else,
 		cr.plugins_.Audio.prototype.cnds.IsAnyPlaying,
 		cr.system_object.prototype.exps.random,
 		cr.plugins_.ValerypopoffJSPlugin.prototype.acts.CallJSfunction,
@@ -35607,7 +35608,6 @@ cr.getObjectRefTable = function () {
 		cr.system_object.prototype.exps.round,
 		cr.behaviors.Timer.prototype.exps.Duration,
 		cr.behaviors.Timer.prototype.exps.TotalTime,
-		cr.system_object.prototype.cnds.Else,
 		cr.system_object.prototype.cnds.LayerVisible,
 		cr.plugins_.NinePatch.prototype.acts.SetPos,
 		cr.plugins_.Text.prototype.exps.X,
@@ -35671,13 +35671,13 @@ cr.getObjectRefTable = function () {
 		cr.system_object.prototype.acts.SetLayerVisible,
 		cr.plugins_.Sprite.prototype.acts.SetSize,
 		cr.system_object.prototype.exps.layoutwidth,
+		cr.plugins_.Sprite.prototype.acts.SetAnimFrame,
 		cr.plugins_.Audio.prototype.acts.Preload,
 		cr.system_object.prototype.exps.scrollx,
 		cr.plugins_.Text.prototype.acts.SetVisible,
+		cr.plugins_.MM_Preloader.prototype.cnds.OnProgress,
 		cr.plugins_.Touch.prototype.exps.AbsoluteX,
 		cr.system_object.prototype.acts.ScrollX,
-		cr.plugins_.Sprite.prototype.acts.SetAnimFrame,
-		cr.plugins_.MM_Preloader.prototype.cnds.OnProgress,
 		cr.behaviors.Sin.prototype.acts.SetActive
 	];
 };
