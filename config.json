@@ -67,7 +67,7 @@
 		}
 	],
 	"android": {
-		"min": 24,
+		"min": 21,
 		"target": 26,
 		"plugins": []
 	},
