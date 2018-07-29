@@ -2392,6 +2392,7 @@ if (typeof Object.getPrototypeOf !== "function")
 		this.isBlackberry10 = !!(typeof window["c2isBlackberry10"] !== "undefined" && window["c2isBlackberry10"]);
 		this.isAndroidStockBrowser = (this.isAndroid && !this.isChrome && !this.isCrosswalk && !this.isFirefox && !this.isAmazonWebApp);
 		this.devicePixelRatio = 1;
+		this.isiPhoneX = false;
 		
 		// Determine if running on a mobile: always true in mobile wrapper
 		this.isMobile = (this.isCordova || this.isCrosswalk || this.isAndroid || this.isiOS || this.isWindowsPhone8 || this.isWindowsPhone81 || this.isBlackberry10 || this.isTizen);
@@ -2765,9 +2766,18 @@ if (typeof Object.getPrototypeOf !== "function")
 		// canvases properly. To work around this, in non-fullscreen mode on iOS, disable retina mode (high-DPI display).
 		if (this.fullscreen_mode === 0 && this.isiOS)
 			this.isRetina = false;
+
+		var dpr = window["devicePixelRatio"] || window["webkitDevicePixelRatio"] || window["mozDevicePixelRatio"] || window["msDevicePixelRatio"] || 1;
+		var screenWidth = window["screen"]["width"] * dpr;
+		var screenHeight = window["screen"]["height"] * dpr;
+
+		this.devicePixelRatio = (this.isRetina ? dpr : 1);
+
+		this.isiPhoneX = this.isiPhone && screenWidth === 1125 && screenHeight === 2436; // slightly unpleasant test for iPhone X
 		
-		this.devicePixelRatio = (this.isRetina ? (window["devicePixelRatio"] || window["webkitDevicePixelRatio"] || window["mozDevicePixelRatio"] || window["msDevicePixelRatio"] || 1) : 1);
-		
+		if (typeof window["StatusBar"] === "object")
+			window["StatusBar"]["hide"]();
+			
 		// In case any singleglobal plugins destroy themselves on startup
 		this.ClearDeathRow();
 		
@@ -2792,9 +2802,15 @@ if (typeof Object.getPrototypeOf !== "function")
 					"failIfMajorPerformanceCaveat": true
 				};
 				
-				this.gl = (this.canvas.getContext("webgl2", attribs) ||
-						   this.canvas.getContext("webgl", attribs) ||
-						   this.canvas.getContext("experimental-webgl", attribs));
+				// HACK: WebGL 2 disabled on Android for the time being due to prevalence of seemingly GPU driver related issues
+				if (!this.isAndroid)
+					this.gl = this.canvas.getContext("webgl2", attribs);
+				
+				if (!this.gl)
+				{
+					this.gl = (this.canvas.getContext("webgl", attribs) ||
+							   this.canvas.getContext("experimental-webgl", attribs));
+				}
 			}
 		}
 		catch (e) {
@@ -2817,6 +2833,7 @@ if (typeof Object.getPrototypeOf !== "function")
 			if (this.enableFrontToBack)
 				this.glUnmaskedRenderer += " [front-to-back enabled]";
 			
+;
 ;
 			
 			this.overlay_canvas = document.createElement("canvas");
@@ -3040,6 +3057,28 @@ if (typeof Object.getPrototypeOf !== "function")
 		// Ignore redundant events
 		if (this.lastWindowWidth === w && this.lastWindowHeight === h && !force)
 			return;
+
+		// ---------- do iphoneX hack ------------------------------------------
+
+		if (this.isiPhoneX && this.isCordova)
+		{
+			var isLandscape = w > h;
+			var docStyle = document["documentElement"].style;
+			var bodyStyle = document["body"].style;
+
+			if (isLandscape)
+			{
+				bodyStyle["height"] = docStyle["height"] = "375px";
+				bodyStyle["width"] = docStyle["width"] = "812px";
+			}
+			else
+			{
+				bodyStyle["width"] = docStyle["width"] = "375px";
+				bodyStyle["height"] = docStyle["height"] = "812px";
+			}
+		}
+
+		// ---------------------------------------------------------------------
 		
 		this.lastWindowWidth = w;
 		this.lastWindowHeight = h;
@@ -10453,44 +10492,7 @@ window["cr_setSuspended"] = function(s)
 			this.runtime.refreshUidMap();
 		}
 		
-		// createInstanceFromInit (via layer.createInitialInstance()s) does not create siblings for
-		// containers when is_startup_instance is true, because all the instances are already in the layout.
-		// Link them together now.
-		for (i = 0; i < created_instances.length; i++)
-		{
-			inst = created_instances[i];
-			
-			if (!inst.type.is_contained)
-				continue;
-				
-			iid = inst.get_iid();
-				
-			for (k = 0, lenk = inst.type.container.length; k < lenk; k++)
-			{
-				t = inst.type.container[k];
-				
-				if (inst.type === t)
-					continue;
-					
-				if (t.instances.length > iid)
-					inst.siblings.push(t.instances[iid]);
-				else
-				{
-					// No initial paired instance in layout: create one
-					if (!t.default_instance)
-					{
-					}
-					else
-					{
-						s = this.runtime.createInstanceFromInit(t.default_instance, inst.layer, true, inst.x, inst.y, true);
-						this.runtime.ClearDeathRow();
-						t.updateIIDs();
-						inst.siblings.push(s);
-						created_instances.push(s);		// come back around and link up its own instances too
-					}
-				}
-			}
-		}
+		this.createAndLinkContainerInstances(created_instances);
 		
 		// Create all initial non-world instances
 		for (i = 0, len = this.initial_nonworld.length; i < len; i++)
@@ -10569,9 +10571,62 @@ window["cr_setSuspended"] = function(s)
 		this.first_visit = false;
 	};
 	
+	Layout.prototype.createAndLinkContainerInstances = function (arr)
+	{
+		// createInstanceFromInit (via layer.createInitialInstance()s) does not create siblings for
+		// containers when is_startup_instance is true, because all the instances are already in the layout.
+		// Link them together now.
+		var i, inst, iid, k, lenk, t, s;
+		
+		for (i = 0; i < arr.length; i++)
+		{
+			inst = arr[i];
+			
+			if (!inst.type.is_contained)
+				continue;
+				
+			iid = inst.get_iid();
+				
+			for (k = 0, lenk = inst.type.container.length; k < lenk; k++)
+			{
+				t = inst.type.container[k];
+				
+				if (inst.type === t)
+					continue;
+					
+				if (t.instances.length > iid)
+					inst.siblings.push(t.instances[iid]);
+				else
+				{
+					// No initial paired instance in layout: create one
+					if (!t.default_instance)
+					{
+					}
+					else
+					{
+						s = this.runtime.createInstanceFromInit(t.default_instance, inst.layer, true, inst.x, inst.y, true);
+						this.runtime.ClearDeathRow();
+						t.updateIIDs();
+						inst.siblings.push(s);
+						arr.push(s);		// come back around and link up its own instances too
+					}
+				}
+			}
+		}
+	};
+	
+	function hasAnyWorldType(container)
+	{
+		return container.some(function (t)
+		{
+			return t.plugin.is_world;
+		});
+	}
+	
 	Layout.prototype.createGlobalNonWorlds = function ()
 	{
-		var i, k, len, initial_inst, inst, type;
+		var i, k, len, initial_inst, type;
+		var created = [];
 		
 		// Create all initial global non-world instances
 		for (i = 0, k = 0, len = this.initial_nonworld.length; i < len; i++)
@@ -10581,11 +10636,12 @@ window["cr_setSuspended"] = function(s)
 			
 			if (type.global)
 			{
-				// If the type is in a container, don't create it; it should only be created along
-				// with its container instances.
-				if (!type.is_contained)
+				// If the type is in a container with any world types, don't create it - it should only be created along
+				// with its container instances. However if there are no world types (e.g. a container of Dictionaries) go ahead
+				// and create the instance.
+				if (!type.is_contained || !hasAnyWorldType(type.container))
 				{
-					inst = this.runtime.createInstanceFromInit(initial_inst, null, true);
+					created.push(this.runtime.createInstanceFromInit(initial_inst, null, true));
 				}
 			}
 			else
@@ -10597,6 +10653,10 @@ window["cr_setSuspended"] = function(s)
 		}
 		
 		cr.truncateArray(this.initial_nonworld, k);
+		
+		// Link up any containers of non-world instances
+		this.runtime.ClearDeathRow();
+		this.createAndLinkContainerInstances(created);
 	};
 
 	Layout.prototype.stopRunning = function ()
@@ -16766,6 +16826,7 @@ cr.system_object.prototype.loadFromJSON = function (o)
 			if (layer.instances[toZ] !== inst)			// not already got this instance there
 			{
 				layer.instances[toZ] = inst;			// update instance
+				inst.layer = layer;						// update instance's layer reference (could have changed)
 				layer.setZIndicesStaleFrom(toZ);		// mark Z indices stale from this point since they have changed
 			}
 		}
@@ -18903,7 +18964,7 @@ cr.system_object.prototype.loadFromJSON = function (o)
 		{
 			clonesol.select_all = false;
 			cr.shallowAssignArray(clonesol.instances, prevsol.instances);
-			cr.shallowAssignArray(clonesol.else_instances, prevsol.else_instances);
+			//cr.shallowAssignArray(clonesol.else_instances, prevsol.else_instances);
 		}
 	};
 
@@ -25887,6 +25948,12 @@ cr.plugins_.Touch = function(runtime)
 		// Ignore mouse events (note check for both IE10 and IE11 style pointerType values)
 		if (info["pointerType"] === info["MSPOINTER_TYPE_MOUSE"] || info["pointerType"] === "mouse")
 			return;
+		
+		// Ignore if already got a pointer with this ID. (This is mainly to deal with buggy implementations
+		// that fire the same pointer IDs down twice, e.g. Firefox desktop.)
+		var i = this.findTouch(info["pointerId"]);
+		if (i !== -1)
+			return;
 			
 		if (info.preventDefault && cr.isCanvasInputEvent(info))
 			info.preventDefault();
@@ -26139,6 +26206,12 @@ cr.plugins_.Touch = function(runtime)
 		this.mouseDown = false;
 	};
 	
+	instanceProto.isClientPosOverCanvas = function (touchX, touchY)
+	{
+		return touchX >= 0 && touchY >= 0 &&
+		    	touchX < this.runtime.width && touchY < this.runtime.height;
+	};
+	
 	instanceProto.tick2 = function()
 	{
 		var i, len, t;
@@ -26181,6 +26254,9 @@ cr.plugins_.Touch = function(runtime)
 	{
 		if (!type)
 			return false;
+		
+		if (!this.isClientPosOverCanvas(this.curTouchX, this.curTouchY))
+			return false;
 			
 		return this.runtime.testAndSelectCanvasPointOverlap(type, this.curTouchX, this.curTouchY, false);
 	};
@@ -26206,6 +26282,9 @@ cr.plugins_.Touch = function(runtime)
 			for (j = 0, lenj = this.touches.length; j < lenj; j++)
 			{
 				var touch = this.touches[j];
+				
+				if (!this.isClientPosOverCanvas(touch.x, touch.y))
+					continue;
 				
 				px = inst.layer.canvasToLayer(touch.x, touch.y, true);
 				py = inst.layer.canvasToLayer(touch.x, touch.y, false);
@@ -26330,6 +26409,9 @@ cr.plugins_.Touch = function(runtime)
 		if (!type)
 			return false;
 		
+		if (!this.isClientPosOverCanvas(this.curTouchX, this.curTouchY))
+			return false;
+		
 		return this.runtime.testAndSelectCanvasPointOverlap(type, this.curTouchX, this.curTouchY, false);
 	};
 	
@@ -26338,12 +26420,18 @@ cr.plugins_.Touch = function(runtime)
 		if (!type)
 			return false;
 		
+		if (!this.isClientPosOverCanvas(this.curTouchX, this.curTouchY))
+			return false;
+		
 		return this.runtime.testAndSelectCanvasPointOverlap(type, this.curTouchX, this.curTouchY, false);
 	};
 	
 	Cnds.prototype.OnDoubleTapGestureObject = function (type)
 	{
 		if (!type)
+			return false;
+		
+		if (!this.isClientPosOverCanvas(this.curTouchX, this.curTouchY))
 			return false;
 		
 		return this.runtime.testAndSelectCanvasPointOverlap(type, this.curTouchX, this.curTouchY, false);
@@ -32820,12 +32908,14 @@ cr.plugins_.Audio = function(runtime)
 		this.playinbackground = this.properties[2];
 		this.nextPlayTime = 0;
 		
-		panningModel = this.properties[3];		// 0 = equalpower, 1 = hrtf, 3 = soundfield
-		distanceModel = this.properties[4];		// 0 = linear, 1 = inverse, 2 = exponential
-		this.listenerZ = -this.properties[5];
-		refDistance = this.properties[6];
-		maxDistance = this.properties[7];
-		rolloffFactor = this.properties[8];
+		// property 3 is latency hint, which is only supported in C3 runtime
+		
+		panningModel = this.properties[4];		// 0 = equalpower, 1 = hrtf, 3 = soundfield
+		distanceModel = this.properties[5];		// 0 = linear, 1 = inverse, 2 = exponential
+		this.listenerZ = -this.properties[6];
+		refDistance = this.properties[7];
+		maxDistance = this.properties[8];
+		rolloffFactor = this.properties[9];
 		
 		this.listenerTracker = new ObjectTracker();
 		
@@ -34721,7 +34811,7 @@ cr.behaviors.Sin = function(runtime)
 		this.mag = this.properties[6];													// magnitude
 		this.mag += Math.random() * this.properties[7];									// magnitude random
 		
-		this.active = this.properties[8];
+		this.isEnabled = this.properties[8];
 		
 		this.initialValue = 0;
 		this.initialValue2 = 0;
@@ -34739,7 +34829,7 @@ cr.behaviors.Sin = function(runtime)
 	{
 		return {
 			"i": this.i,
-			"a": this.active,
+			"a": this.isEnabled,
 			"mv": this.movement,
 			"w": this.wave,
 			"p": this.period,
@@ -34755,7 +34845,7 @@ cr.behaviors.Sin = function(runtime)
 	behinstProto.loadFromJSON = function (o)
 	{
 		this.i = o["i"];
-		this.active = o["a"];
+		this.isEnabled = o["a"];
 		this.movement = o["mv"];
 		this.wave = o["w"];
 		this.period = o["p"];
@@ -34838,7 +34928,7 @@ cr.behaviors.Sin = function(runtime)
 	{
 		var dt = this.runtime.getDt(this.inst);
 		
-		if (!this.active || dt === 0)
+		if (!this.isEnabled || dt === 0)
 			return;
 		
 		if (this.period === 0)
@@ -34932,9 +35022,9 @@ cr.behaviors.Sin = function(runtime)
 	// Conditions
 	function Cnds() {};
 	
-	Cnds.prototype.IsActive = function ()
+	Cnds.prototype.IsEnabled = function ()
 	{
-		return this.active;
+		return this.isEnabled;
 	};
 	
 	Cnds.prototype.CompareMovement = function (m)
@@ -34966,9 +35056,9 @@ cr.behaviors.Sin = function(runtime)
 	// Actions
 	function Acts() {};
 	
-	Acts.prototype.SetActive = function (a)
+	Acts.prototype.SetEnabled = function (a)
 	{
-		this.active = (a === 1);
+		this.isEnabled = (a === 1);
 	};
 	
 	Acts.prototype.SetPeriod = function (x)
@@ -35618,8 +35708,10 @@ cr.getObjectRefTable = function () {
 		cr.system_object.prototype.cnds.CompareBoolVar,
 		cr.system_object.prototype.acts.GoToLayout,
 		cr.plugins_.ValerypopoffJSPlugin.prototype.cnds.AllScriptsLoaded,
+		cr.system_object.prototype.acts.SetLayerVisible,
 		cr.plugins_.Sprite.prototype.acts.SetY,
 		cr.plugins_.Sprite.prototype.acts.SetHeight,
+		cr.system_object.prototype.cnds.LayerCmpOpacity,
 		cr.system_object.prototype.exps.lerp,
 		cr.system_object.prototype.acts.SubVar,
 		cr.system_object.prototype.cnds.CompareBetween,
@@ -35668,7 +35760,8 @@ cr.getObjectRefTable = function () {
 		cr.system_object.prototype.acts.WaitForSignal,
 		cr.plugins_.Sprite.prototype.cnds.OnAnimFinished,
 		cr.system_object.prototype.acts.Signal,
-		cr.system_object.prototype.acts.SetLayerVisible,
+		cr.system_object.prototype.acts.SetLayerOpacity,
+		cr.plugins_.Touch.prototype.exps.AbsoluteX,
 		cr.plugins_.Sprite.prototype.acts.SetSize,
 		cr.system_object.prototype.exps.layoutwidth,
 		cr.plugins_.Sprite.prototype.acts.SetAnimFrame,
@@ -35676,9 +35769,8 @@ cr.getObjectRefTable = function () {
 		cr.system_object.prototype.exps.scrollx,
 		cr.plugins_.Text.prototype.acts.SetVisible,
 		cr.plugins_.MM_Preloader.prototype.cnds.OnProgress,
-		cr.plugins_.Touch.prototype.exps.AbsoluteX,
 		cr.system_object.prototype.acts.ScrollX,
-		cr.behaviors.Sin.prototype.acts.SetActive
+		cr.behaviors.Sin.prototype.acts.SetEnabled
 	];
 };
 

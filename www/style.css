@@ -27,3 +27,8 @@ html, body, canvas {
 	src: url('fonts/oswald-light.ttf') format('truetype');
 }
 
+@font-face {
+	font-family: 'Oswald-Medium';
+	src: url('fonts/oswald-medium.ttf') format('truetype');
+}
+

@@ -1,7 +1,7 @@
 {
 	"id": "com.f5.spacewalker",
-	"version": "1.0.0.0",
-	"versionCode": 1000000,
+	"version": "1.0.1.0",
+	"versionCode": 1000100,
 	"name": "SpaceWalker",
 	"description": "Using real footstep as game energy to discover different planets",
 	"whitelist": [
@@ -13,6 +13,7 @@
 	"website": "",
 	"orientation": "portrait",
 	"fullscreen": true,
+	"permissions": [],
 	"icons": [
 		{
 			"src": "www/icons/icon-512.png",
@@ -61,15 +62,7 @@
 			"version": null
 		},
 		{
-			"id": "cordova-plugin-file",
-			"version": null
-		},
-		{
 			"id": "cordova-plugin-statusbar",
-			"version": null
-		},
-		{
-			"id": "cordova-custom-config",
 			"version": null
 		}
 	],
@@ -78,6 +71,7 @@
 		"target": 26,
 		"plugins": []
 	},
+	"splash": "www/icons/default@2x~universal~anyany.png",
 	"ios": null,
 	"useragent": null
 }
