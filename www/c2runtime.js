@@ -35744,7 +35744,6 @@ cr.getObjectRefTable = function () {
 		cr.plugins_.Arr.prototype.exps.At,
 		cr.system_object.prototype.cnds.ForEachOrdered,
 		cr.plugins_.Browser.prototype.cnds.PageVisible,
-		cr.plugins_.Sprite.prototype.acts.SetAnim,
 		cr.plugins_.Sprite.prototype.acts.SetX,
 		cr.system_object.prototype.exps.cos,
 		cr.system_object.prototype.exps.sin,
